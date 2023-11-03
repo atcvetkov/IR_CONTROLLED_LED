@@ -3,7 +3,15 @@
 
 #define LED_PIN 3       // Define the pin connected to the data input of your LED strip
 #define NUM_LEDS 60     // Define the number of LEDs in your strip
-#define BRIGHTNESS 64   // Set the brightness (0-255)
+#define MAX_BRIGHTNESS 255  // Maximum brightness (0-255)
+#define BRIGHTNESS_STEP 10   // Small step for gradual increase
+#define BRIGHTNESS_INTERVAL 10  // Interval in milliseconds between steps
+#define PERIOD 2000      // Duration of one complete cycle in milliseconds (2 seconds)
+#define LED_FADE 1000    // Duration of the fade in/out portion of the cycle (1 second)
+
+int brightness = 128;  // Initial brightness level
+bool increasingBrightness = true; // Flag to control brightness change
+unsigned long previousMillis = 0;
 
 // Common CRGB colors
 CRGB red = CRGB(255, 0, 0);
@@ -34,6 +42,11 @@ const int six = 67;
 const int seven = 7;
 const int eight = 21;
 const int nine = 9;
+const int star = 22;
+const int up = 24;
+const int down = 82; 
+const int ok = 28;
+const int hash = 13;
 
 const int IR_PIN = 0;  // Define the digital pin where the IR receiver is connected
 IRrecv irrecv(IR_PIN);
@@ -48,7 +61,48 @@ void setup() {
   Serial.println("IR Receiver Ready");
 
   FastLED.addLeds<NEOPIXEL, LED_PIN>(leds, NUM_LEDS);
-  FastLED.setBrightness(BRIGHTNESS);
+  FastLED.setBrightness(brightness);
+}
+
+// void gradualChangeBrightness(bool increase) {
+//   int targetBrightness = increase ? MAX_BRIGHTNESS : 0;
+//   for (int currentBrightness = FastLED.getBrightness(); currentBrightness != targetBrightness; currentBrightness += (increase ? BRIGHTNESS_STEP : -BRIGHTNESS_STEP)) {
+//     FastLED.setBrightness(currentBrightness);
+//     FastLED.show();
+//     delay(BRIGHTNESS_INTERVAL);
+//   }
+// }
+
+// void gradualChangeBrightness() {
+//   int targetBrightness = increasingBrightness ? MAX_BRIGHTNESS : 0;
+//   for (int currentBrightness = brightness; currentBrightness != targetBrightness; currentBrightness += (increasingBrightness ? BRIGHTNESS_STEP : -BRIGHTNESS_STEP)) {
+//     FastLED.setBrightness(currentBrightness);
+//     FastLED.show();
+//     delay(BRIGHTNESS_INTERVAL);
+//   }
+//   increasingBrightness = !increasingBrightness;
+// }
+
+void gradualBrightnessChange() {
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= PERIOD) {
+    previousMillis = currentMillis;
+    increasingBrightness = !increasingBrightness; // Invert the direction of change
+  }
+
+  if (currentMillis - previousMillis <= LED_FADE) {
+    if (increasingBrightness) {
+      if (brightness < MAX_BRIGHTNESS) {
+        brightness++;
+      }
+    } else {
+      if (brightness > 0) {
+        brightness--;
+      }
+    }
+    FastLED.setBrightness(brightness);
+    FastLED.show();
+  }
 }
 
 void loop() {
@@ -79,6 +133,32 @@ void loop() {
 
       case six:
         fill_solid(leds, NUM_LEDS, violet);
+        break;
+
+      case star:
+        fill_solid(leds, NUM_LEDS, black);
+        break;
+
+      case up:
+        if (brightness + BRIGHTNESS_STEP <= MAX_BRIGHTNESS) {
+          brightness += BRIGHTNESS_STEP;
+          FastLED.setBrightness(brightness);
+        }
+        break;
+
+      case down:
+        if (brightness - BRIGHTNESS_STEP >= 0) {
+          brightness -= BRIGHTNESS_STEP;
+          FastLED.setBrightness(brightness);
+        }
+        break;
+
+      case ok:
+        gradualBrightnessChange();
+        break;
+
+      case hash:
+        fill_rainbow(leds, NUM_LEDS, 0, 7);
         break;
 
     }
