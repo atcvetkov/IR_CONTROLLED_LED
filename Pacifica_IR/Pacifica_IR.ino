@@ -6,12 +6,11 @@
 #define MAX_BRIGHTNESS 255  // Maximum brightness (0-255)
 #define BRIGHTNESS_STEP 10   // Small step for gradual increase
 #define BRIGHTNESS_INTERVAL 10  // Interval in milliseconds between steps
-#define PERIOD 2000      // Duration of one complete cycle in milliseconds (2 seconds)
-#define LED_FADE 1000    // Duration of the fade in/out portion of the cycle (1 second)
+#define FADE_STEP 1
+
 
 int brightness = 128;  // Initial brightness level
-bool increasingBrightness = true; // Flag to control brightness change
-unsigned long previousMillis = 0;
+bool exitLoop = false;    // Flag to control loop exit
 
 // Common CRGB colors
 CRGB red = CRGB(255, 0, 0);
@@ -64,46 +63,24 @@ void setup() {
   FastLED.setBrightness(brightness);
 }
 
-// void gradualChangeBrightness(bool increase) {
-//   int targetBrightness = increase ? MAX_BRIGHTNESS : 0;
-//   for (int currentBrightness = FastLED.getBrightness(); currentBrightness != targetBrightness; currentBrightness += (increase ? BRIGHTNESS_STEP : -BRIGHTNESS_STEP)) {
-//     FastLED.setBrightness(currentBrightness);
-//     FastLED.show();
-//     delay(BRIGHTNESS_INTERVAL);
-//   }
-// }
-
-// void gradualChangeBrightness() {
-//   int targetBrightness = increasingBrightness ? MAX_BRIGHTNESS : 0;
-//   for (int currentBrightness = brightness; currentBrightness != targetBrightness; currentBrightness += (increasingBrightness ? BRIGHTNESS_STEP : -BRIGHTNESS_STEP)) {
-//     FastLED.setBrightness(currentBrightness);
-//     FastLED.show();
-//     delay(BRIGHTNESS_INTERVAL);
-//   }
-//   increasingBrightness = !increasingBrightness;
-// }
-
-void gradualBrightnessChange() {
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= PERIOD) {
-    previousMillis = currentMillis;
-    increasingBrightness = !increasingBrightness; // Invert the direction of change
-  }
-
-  if (currentMillis - previousMillis <= LED_FADE) {
-    if (increasingBrightness) {
-      if (brightness < MAX_BRIGHTNESS) {
-        brightness++;
-      }
-    } else {
-      if (brightness > 0) {
-        brightness--;
-      }
-    }
+void gradualIncreaseBrightness() {
+  while (brightness < MAX_BRIGHTNESS) {
+    brightness += FADE_STEP;
     FastLED.setBrightness(brightness);
     FastLED.show();
+    delay(BRIGHTNESS_INTERVAL);
   }
 }
+
+void gradualDecreaseBrightness() {
+  while (brightness > 50) {
+    brightness -= FADE_STEP;
+    FastLED.setBrightness(brightness);
+    FastLED.show();
+    delay(BRIGHTNESS_INTERVAL);
+  }
+}
+
 
 void loop() {
 
@@ -154,7 +131,17 @@ void loop() {
         break;
 
       case ok:
-        gradualBrightnessChange();
+        exitLoop = false;
+        while (!exitLoop){
+          // if (IrReceiver.decode() && IrReceiver.decodedIRData.command != ok) {
+          Serial.println(IrReceiver.decodedIRData.command);
+          if (IrReceiver.decodedIRData.command != 28) {
+            Serial.println("ok - exit");
+            exitLoop = true;
+          }
+          gradualIncreaseBrightness();
+          gradualDecreaseBrightness();
+        }
         break;
 
       case hash:
