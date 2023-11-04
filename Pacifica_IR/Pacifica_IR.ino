@@ -8,9 +8,7 @@
 #define BRIGHTNESS_INTERVAL 10  // Interval in milliseconds between steps
 #define FADE_STEP 1
 
-
 int brightness = 128;  // Initial brightness level
-bool exitLoop = false;    // Flag to control loop exit
 
 // Common CRGB colors
 CRGB red = CRGB(255, 0, 0);
@@ -53,6 +51,21 @@ decode_results results;
 
 CRGB leds[NUM_LEDS];
 
+
+//
+bool runWhileTrueLoop = false;  // A flag to control the while(true) loop
+
+unsigned long task1PreviousMillis = 0;
+const unsigned long task1Interval = 1000;  // Task 1 interval in milliseconds
+
+unsigned long task2PreviousMillis = 0;
+const unsigned long task2Interval = 500;  // Task 2 interval in milliseconds
+
+const unsigned long interval = 500;
+unsigned long previousTime = 0;
+//
+
+
 void setup() {
   delay(1000);
   Serial.begin(9600);
@@ -83,9 +96,31 @@ void gradualDecreaseBrightness() {
 
 
 void loop() {
+  unsigned long currentMillis = millis();
 
   if (IrReceiver.decode()) {
     Serial.println(IrReceiver.decodedIRData.command);
+
+    // // Check a condition to start or stop the while(true) loop
+    // if (IrReceiver.decodedIRData.command != ok) {
+    //   runWhileTrueLoop = false;
+    //   Serial.println("runWhileTrueLoop = false");
+    // }
+
+    // Task 1: Execute every task1Interval milliseconds
+    if (currentMillis - task1PreviousMillis >= task1Interval) {
+      task1PreviousMillis = currentMillis;
+      // Task 1 code here
+      // if (IrReceiver.decodedIRData.command != ok) {
+      //   Serial.println("TEST!!!");
+      //   exitLoop = true;
+      // }
+          // Check a condition to start or stop the while(true) loop
+      if (IrReceiver.decodedIRData.command != ok) {
+        runWhileTrueLoop = false;
+        Serial.println("runWhileTrueLoop = false");
+      }
+    }
 
     switch (IrReceiver.decodedIRData.command) {
       case one:
@@ -131,17 +166,38 @@ void loop() {
         break;
 
       case ok:
-        exitLoop = false;
-        while (!exitLoop){
-          // if (IrReceiver.decode() && IrReceiver.decodedIRData.command != ok) {
-          Serial.println(IrReceiver.decodedIRData.command);
-          if (IrReceiver.decodedIRData.command != 28) {
-            Serial.println("ok - exit");
-            exitLoop = true;
+        runWhileTrueLoop = true;
+        Serial.println("runWhileTrueLoop = true");
+        if (runWhileTrueLoop) {
+          // Independent while(true) loop
+          while (true) {
+            // Code for the independent loop
+
+            // Use millis() for timing within the loop
+            unsigned long currentTime = millis();
+            // Perform actions based on timing or conditions
+            if (currentTime - previousTime >= interval) {
+              // Perform some action
+              gradualIncreaseBrightness();
+              gradualDecreaseBrightness();
+              previousTime = currentTime;  // Update previousTime
+            }
+
+            // Break out of the while(true) loop when needed
+            if (!runWhileTrueLoop) {
+              break;
+            }
           }
-          gradualIncreaseBrightness();
-          gradualDecreaseBrightness();
         }
+
+
+
+        // while (!exitLoop){
+        //   gradualIncreaseBrightness();
+        //   gradualDecreaseBrightness();
+        //   delay(1000);
+        // }
+
         break;
 
       case hash:
